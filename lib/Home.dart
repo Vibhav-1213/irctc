@@ -1,12 +1,16 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:rail/Secrets.dart';
 import 'package:searchfield/searchfield.dart';
 import 'package:http/http.dart' as http;
-
+import 'Train.dart';
 
 var stringResponse = '';
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -15,25 +19,58 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
+  List STATIONS = [];
+  FocusNode fromFocusNode = FocusNode();
+  FocusNode toFocusNode = FocusNode();
   String? _selectedtrain;
+  TextEditingController fromController = new TextEditingController();
+  TextEditingController toController = new TextEditingController();
+  Map items = {};
 
-  Future<List<Map>> fetchItems() async{
-    List<Map> items = [];
+  Future fetchItems() async {
+    final queryParameters = {
+      'fromStationCode': fromController.text.toLowerCase(),
+      'toStationCode': toController.text.toLowerCase(),
+    };
 
-    http.Response response = await http.get(Uri.parse('https://irctc1.p.rapidapi.com/api/v1/searchStation'));
+    http.Response response = await http.get(
+        Uri.https('irctc1.p.rapidapi.com', '/api/v2/trainBetweenStations',
+            queryParameters),
+        headers: {
+          'X-RapidAPI-Key': API_KEY,
+          'X-RapidAPI-Host': 'irctc1.p.rapidapi.com'
+        });
+    log(response.body);
 
-    if (response.statusCode == 200)
-    {
-      items = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      items = json.decode(response.body);
     }
-    print(items);
-    return items;
+    // final String response =
+    //     await rootBundle.loadString('assets/Responses.json');
+    // final data = await json.decode(response);
+    // items = data["items"];
+  }
+
+  Future<void> fetchStationList() async {
+    final String response = await rootBundle.loadString('assets/Stations.json');
+    final data = await json.decode(response);
+    setState(() {
+      STATIONS = (data["features"] as List)
+          .map((e) => e["properties"]["code"])
+          .toList();
+      STATIONS.sort();
+    });
+    log("done");
+  }
+
+  @override
+  void initState() {
+    fetchStationList();
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    fetchItems();
     return Scaffold(
       backgroundColor: Colors.black87,
       body: CustomScrollView(
@@ -48,32 +85,47 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             leading: IconButton(
-              onPressed: (){},
-              icon: Icon(Icons.menu,color: Colors.white,),
+              onPressed: () {},
+              icon: const Icon(
+                Icons.menu,
+                color: Colors.white,
+              ),
             ),
-            title: Text('Bookings...',style: TextStyle(color: Colors.white),),
+            title: const Text(
+              'Bookings...',
+              style: TextStyle(color: Colors.white),
+            ),
             actions: [
-              IconButton(onPressed: (){}, icon: Icon(Icons.more_vert,color: Colors.white,))
+              IconButton(
+                  onPressed: () {},
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: Colors.white,
+                  ))
             ],
           ),
           SliverToBoxAdapter(
             child: Container(
               child: Column(
                 children: [
-                  Container(
+                  SizedBox(
                     width: double.infinity,
-                    height: MediaQuery.of(context).size.height*0.7,
+                    height: MediaQuery.of(context).size.height * 0.7,
                     child: ListView(
                       children: [
-                        Align(
-                          alignment: Alignment(-1.0,-1.0),
+                        const Align(
+                          alignment: Alignment(-1.0, -1.0),
                           child: Padding(
                             padding: EdgeInsets.all(20),
-                            child: Text("Select From Station",style: TextStyle(fontSize: 16,color: Colors.white),),
+                            child: Text(
+                              "Select From Station",
+                              style:
+                              TextStyle(fontSize: 16, color: Colors.white),
+                            ),
                           ),
                         ),
                         Container(
-                          margin: EdgeInsets.symmetric(horizontal: 20),
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
                           decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
@@ -81,13 +133,15 @@ class _HomePageState extends State<HomePage> {
                                 BoxShadow(
                                   color: Colors.white.withOpacity(0.2),
                                   blurRadius: 10,
-                                  offset: Offset(0,10),
+                                  offset: const Offset(0, 10),
                                 ),
-                              ]
-                          ),
+                              ]),
                           child: SearchField(
-                            suggestions: ["ch","ind"].map((e) =>
-                                SearchFieldListItem(e)).toList(),
+                            controller: fromController,
+                            focusNode: fromFocusNode,
+                            suggestions: (STATIONS.isNotEmpty ? STATIONS : [])
+                                .map((e) => SearchFieldListItem(e))
+                                .toList(),
                             hint: 'Search Departure Station',
                             searchInputDecoration: InputDecoration(
                               enabledBorder: OutlineInputBorder(
@@ -106,6 +160,14 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             itemHeight: 50,
+                            onSubmit: (p0) {
+                              setState(() {
+                                if (STATIONS.contains(p0.toUpperCase())) {
+                                  fromController.text = p0.toUpperCase();
+                                  fromFocusNode.unfocus();
+                                }
+                              });
+                            },
                             maxSuggestionsInViewPort: 6,
                             suggestionsDecoration: BoxDecoration(
                               color: Colors.white,
@@ -113,17 +175,21 @@ class _HomePageState extends State<HomePage> {
                             ),
                             onSuggestionTap: (value) {
                               setState(() {
-                                _selectedtrain = value.toString() ??'';
+                                fromController.text = value.searchKey;
+                                fromFocusNode.unfocus();
                               });
                             },
                           ),
                         ),
-                        Padding(
+                        const Padding(
                           padding: EdgeInsets.all(20),
-                          child: Text("Select To Station",style: TextStyle(fontSize: 16,color: Colors.white),),
+                          child: Text(
+                            "Select To Station",
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
                         ),
                         Container(
-                          margin: EdgeInsets.symmetric(horizontal: 20),
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
                           decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
@@ -131,13 +197,15 @@ class _HomePageState extends State<HomePage> {
                                 BoxShadow(
                                   color: Colors.white.withOpacity(0.2),
                                   blurRadius: 10,
-                                  offset: Offset(0,10),
+                                  offset: const Offset(0, 10),
                                 ),
-                              ]
-                          ),
+                              ]),
                           child: SearchField(
-                            suggestions: ["ch","ind"].map((e) =>
-                                SearchFieldListItem(e)).toList(),
+                            controller: toController,
+                            focusNode: toFocusNode,
+                            suggestions: (STATIONS.isNotEmpty ? STATIONS : [])
+                                .map((e) => SearchFieldListItem(e))
+                                .toList(),
                             hint: 'Search Arrival Station',
                             searchInputDecoration: InputDecoration(
                               enabledBorder: OutlineInputBorder(
@@ -155,6 +223,14 @@ class _HomePageState extends State<HomePage> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
+                            onSubmit: (p0) {
+                              setState(() {
+                                if (STATIONS.contains(p0.toUpperCase())) {
+                                  toController.text = p0.toUpperCase();
+                                  toFocusNode.unfocus();
+                                }
+                              });
+                            },
                             itemHeight: 50,
                             maxSuggestionsInViewPort: 6,
                             suggestionsDecoration: BoxDecoration(
@@ -163,11 +239,37 @@ class _HomePageState extends State<HomePage> {
                             ),
                             onSuggestionTap: (value) {
                               setState(() {
-                                _selectedtrain = value.toString() ??'';
+                                toController.text = value.searchKey;
+                                toFocusNode.unfocus();
                               });
                             },
                           ),
                         ),
+                        const SizedBox(
+                          height: 20,
+                        ),
+                        ElevatedButton(
+                            onPressed: () async {
+                              if (fromController.text.isNotEmpty &&
+                                  toController.text.isNotEmpty) {
+                                await fetchItems();
+                                // ignore: use_build_context_synchronously
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => TrainPage(
+                                          items: items,
+                                          fromStation: fromController.text,
+                                          toStation: toController.text,
+                                        )));
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Please select both stations")));
+                              }
+                            },
+                            child: Text("Search Trains"))
                       ],
                     ),
                   ),
@@ -180,23 +282,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
