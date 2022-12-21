@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "580445382085",
+    "project_id": "rail-signin",
+    "storage_bucket": "rail-signin.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:580445382085:android:76c9187ee133984c1357ac",
+        "android_client_info": {
+          "package_name": "com.example.rail"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "580445382085-5qbtto6moanl6iqek9uooorus1me7igc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWjhsXvWf9W7Wid9VaBYn-BHmVy5fylts"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "580445382085-5qbtto6moanl6iqek9uooorus1me7igc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
